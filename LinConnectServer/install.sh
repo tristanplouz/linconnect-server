@@ -14,14 +14,22 @@ then
     read -p "Install dependencies automatically (for Fedora distros) [Y/N]" -n 1 -r
     if [[ ! $REPLY =~ ^[Yy]$ ]]
     then
-	echo "Please manually install the following:"
-	echo "* python2"
-	echo "* python-pip"
-	echo "* python-gobject"
-	echo "* libavahi-compat-libdnssd1"
-	echo "* cherrypy (python package)"
-	echo "* pybonjour (python package)"
-	
+    	read -p "Install dependencies automatically (for Arch distros) [Y/N]" -n 1 -r
+    	if [[ ! $REPLY =~ ^[Yy]$ ]]
+    	then
+		echo "Please manually install the following:"
+		echo "* python2"
+		echo "* python-pip"
+		echo "* python-gobject"
+		echo "* libavahi-compat-libdnssd1"
+		echo "* cherrypy (python package)"
+		echo "* pybonjour (python package)"
+	else
+		echo "Installing dependencies"
+		sudo pacman -S python2 python2-pip python2-gobject avahi git
+		echo "Install Python dependencies"
+		sudo pip2 install cherrypy pybonjour
+	fi
     else
 	echo "Installing dependencies..."
 	sudo yum install -y python2 python-pip pygobject2 git avahi-compat-libdns_sd
