@@ -26,9 +26,9 @@ then
 		echo "* pybonjour (python package)"
 	else
 		echo "Installing dependencies"
-		sudo pacman -S python2 python2-pip python2-gobject avahi git
+		sudo pacman -S python2 python2-pip python2-gobject avahi git python2-pybonjour
 		echo "Install Python dependencies"
-		sudo pip2 install cherrypy pybonjour
+		sudo pip2 install cherrypy
 	fi
     else
 	echo "Installing dependencies..."
