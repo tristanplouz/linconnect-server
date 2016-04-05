@@ -38,10 +38,12 @@ import cherrypy
 import subprocess
 from gi.repository import Notify
 from gi.repository import GLib
+from gi.repository import Gtk
 import pybonjour
 import shutil
 import base64
 import json
+from easygui import *
 
 app_name = 'linconnect-server'
 version = "2.20"
@@ -127,10 +129,19 @@ class Notification(object):
             #Convert the notification to the correct type
             _notification_header=_notification_header.decode()
             _notification_description=_notification_description.decode()
+            
+            #See if it's JSON to decode
+            print(_notification_description,"\n\n\n")
+            notif_desc={}
+            action=""
             try:
                 notif_desc = json.loads(_notification_description)
             except:
-                pass
+                notif_desc["data"]="erreur de decodage"
+                notif_desc["appname"]="server Linconnect"
+            
+            for i in range(len(notif_desc["action"])):
+                    action+=notif_desc["action"][i]["act"]
             # Icon should be small enough to fit into modern PCs RAM.
             # Alternatively, can do this in chunks, twice: first to count MD5, second to copy the file.
             icon_data = notificon.file.read()
@@ -144,10 +155,14 @@ class Notification(object):
                         icon_path="info"
 
             # Send the notification
-            try:
-                notif = Notify.Notification.new(_notification_header, notif_desc["data"]+"\nVia "+notif_desc["appname"], icon_path)
-            except:
-                notif = Notify.Notification.new(_notification_header, _notification_description, icon_path)
+            notif = Notify.Notification.new(notif_desc["title"], notif_desc["data"]+"\nVia "+notif_desc["appname"], icon_path)
+            for i in range(len(notif_desc["action"])):
+                notif.add_action(
+                    notif_desc["action"][i]["act"],
+                    notif_desc["action"][i]["act"],
+                    send_back,
+                    notif_desc["action"][i]["intent"]
+                    )
             # Add 'value' hint to display nice progress bar if we see percents in the notification
             percent_match = re.search(r'(1?\d{2})%', _notification_header + _notification_description)
             if percent_match:
@@ -156,11 +171,16 @@ class Notification(object):
                 notif.set_timeout(parser.getint('other', 'notify_timeout'))
             try:
                 notif.show()
+                Gtk.main()
+                notif.connect("closed",OnClosed)
+
             except:
                 # Workaround for org.freedesktop.DBus.Error.ServiceUnknown
                 Notify.uninit()
                 Notify.init("com.willhauck.linconnect")
                 notif.show()
+                Gtk.main()
+                notif.connect("closed",OnClosed)
 
         return "true"
     notif.exposed = True
@@ -193,7 +213,18 @@ def initialize_bonjour():
     finally:
         sdRef.close()
 
+def OnClosed():
+   Gtk.main_quit()
+    
+def answer_to_msg(self,notif):
+    Gtk.main_quit()
+    print("lol")
+    enterbox("Repondre à","il a dit")
 
+def send_back(self, notif, data):
+    Gtk.main_quit()
+    print("Send to client to do: \n")
+    print(data)
 def get_local_ip():
     ips = []
     for ip in subprocess.check_output("/sbin/ip address | grep -i 'inet ' | awk {'print $2'} | sed -e 's/\/[^\/]*$//'", shell=True).split("\n"):
@@ -212,8 +243,14 @@ if parser.getboolean('connection', 'enable_bonjour') == 1:
 
 config_instructions = "Configuration instructions at http://localhost:" + parser.get('connection', 'port')
 print(config_instructions)
-notif = Notify.Notification.new("Notification server started (version " + version + ")", config_instructions, "info")
-notif.show()
+t = Notify.Notification.new("Notification server started (version " + version + ")", config_instructions, "info")
+t.add_action(
+    "answer",
+    "Reply to Message",
+    answer_to_msg,
+    None# Arguments
+)
+t.show()
 
 cherrypy.server.socket_host = '0.0.0.0'
 cherrypy.server.socket_port = int(parser.get('connection', 'port'))
