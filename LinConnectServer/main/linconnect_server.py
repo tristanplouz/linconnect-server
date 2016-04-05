@@ -41,6 +41,7 @@ from gi.repository import GLib
 import pybonjour
 import shutil
 import base64
+import json
 
 app_name = 'linconnect-server'
 version = "2.20"
@@ -119,11 +120,17 @@ class Notification(object):
             new_notification_description = cherrypy.request.headers['NOTIFDESCRIPTION'].replace('\x00', '').decode('iso-8859-1', 'replace').encode('utf-8')
 
         # Ensure the notification is not a duplicate
-        if (_notification_header != new_notification_header) \
-        or (_notification_description != new_notification_description):
+        if (_notification_header != new_notification_header) or (_notification_description != new_notification_description):
             _notification_header = new_notification_header
             _notification_description = new_notification_description
-
+            
+            #Convert the notification to the correct type
+            _notification_header=_notification_header.decode()
+            _notification_description=_notification_description.decode()
+            try:
+                notif_desc = json.loads(_notification_description)
+            except:
+                pass
             # Icon should be small enough to fit into modern PCs RAM.
             # Alternatively, can do this in chunks, twice: first to count MD5, second to copy the file.
             icon_data = notificon.file.read()
@@ -131,10 +138,16 @@ class Notification(object):
 
             if not os.path.isfile(icon_path):
                 with open(icon_path, 'w') as icon_file:
-                    icon_file.write(icon_data)
+                    try :
+                        icon_file.write(icon_data)
+                    except:
+                        icon_path="info"
 
             # Send the notification
-            notif = Notify.Notification.new(_notification_header, _notification_description, icon_path)
+            try:
+                notif = Notify.Notification.new(_notification_header, notif_desc["data"]+"\nVia "+notif_desc["appname"], icon_path)
+            except:
+                notif = Notify.Notification.new(_notification_header, _notification_description, icon_path)
             # Add 'value' hint to display nice progress bar if we see percents in the notification
             percent_match = re.search(r'(1?\d{2})%', _notification_header + _notification_description)
             if percent_match:
